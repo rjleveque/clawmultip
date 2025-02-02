@@ -31,10 +31,6 @@ def set_rundata_params(rundata, setrun_params):
     return rundata
 
 
-xclawcmd = 'xclaw'
-run_clawpack = True
-make_plots = False
-
 runs_dir = os.path.abspath('.')
 
 def run_one_case(case):
@@ -53,13 +49,23 @@ def run_one_case(case):
 
     p = current_process()
 
-    # unpack the dictionary:
+    # unpack the dictionary case to get parameters for this case:
 
-    outdir = case['outdir']
+    xclawcmd = case.get('xclawcmd', None)
+    run_clawpack = xclawcmd is not None
+
     plotdir = case.get('plotdir', None)
+    make_plots = plotdir is not None
+
     case_name = case['case_name']
+    outdir = case['outdir']
     setrun_params = case.get('setrun_params', {}) # setrun params to change
+    setplot_params = case.get('setplot_params', {}) # setplot params to change
     params = case.get('params', {})  # dictionary for any other case parameters
+
+    # clawpack.clawutil.runclaw parameters that might be specified:
+    overwrite = params.get('overwrite', True) # if False, abort if outdir exists
+    runexe = params.get('runexe', None)  # string that must preceed xclawcmd
 
 
     if not os.path.isdir(outdir):
@@ -77,14 +83,6 @@ def run_one_case(case):
                 % (p.pid, case_name, timenow)
 
 
-    # initialize rundata using setrun but then change some things for each run:
-    rundata = setrun()
-
-    rundata = set_rundata_params(rundata, case['setrun_params'])
-
-    # write .data files in outdir:
-    rundata.write(outdir)
-
     stdout_fname = outdir + '/python_output.txt'
     try:
         stdout_file = open(stdout_fname, 'w')
@@ -99,12 +97,14 @@ def run_one_case(case):
 
     print(message)
 
-    # Redirect stdout,stderr so any print statements go to a unique file...
-    import sys
-    sys_stdout = sys.stdout
-    sys.stdout = stdout_file
-    sys_stderr = sys.stderr
-    sys.stderr = stdout_file
+    if 1:
+        # Redirect stdout,stderr so any print statements go to a unique file...
+        import sys
+        sys_stdout = sys.stdout
+        sys.stdout = stdout_file
+        sys_stderr = sys.stderr
+        sys.stderr = stdout_file
+        print(message)
 
     # write out all case parameters:
     fname = os.path.join(outdir, 'case_info.txt')
@@ -134,24 +134,44 @@ def run_one_case(case):
             if k != 'case_name':
                 f.write('%s:  %s\n' % (k.ljust(20), case[k]))
 
+
     if run_clawpack:
+
+        # initialize rundata using specified setrun file:
+        rundata = setrun()
+
+        # now change things in rundata as specified by case['setrun_params']:
+        rundata = set_rundata_params(rundata, case['setrun_params'])
+
+        # write .data files in outdir:
+        rundata.write(outdir)
+
         # Run the clawpack executable
         if not os.path.isfile(xclawcmd):
             raise Exception('Executable %s not found' % xclawcmd)
 
         # Use data from rundir=outdir, which was just written above...
-        runclaw(xclawcmd=xclawcmd, outdir=outdir,
-                rundir=outdir, nohup=True)
+        runclaw(xclawcmd=xclawcmd, outdir=outdir, overwrite=overwrite,
+                rundir=outdir, nohup=True, runexe=runexe,
+                xclawout=None, xclawerr=None)
 
-    stdout_file.close()
-    # Fix stdout again
-    sys.stdout = sys_stdout
-    sys.stderr = sys_stderr
+    if make_plots:
+        # need to add
+        print('No code yet to make plots')
 
-    timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
+    #timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
+    timenow = datetime.datetime.utcnow().strftime('%Y-%m-%d at %H:%M:%S') \
+                + ' UTC'
     message = "Process %i completed case %s at %s\n" \
                 % (p.pid, case_name, timenow)
     print(message)
+
+    if 1:
+        stdout_file.close()
+        # Fix stdout again
+        sys.stdout = sys_stdout
+        sys.stderr = sys_stderr
+        print(message) # to screen
 
 
 def make_cases():
@@ -161,6 +181,7 @@ def make_cases():
     """
 
     caselist = []
+
     for mx in [100,200]:
         for order in [1,2]:
             case = {}
@@ -175,10 +196,14 @@ def make_cases():
             case['case_name'] = case_name
             case['setrun_params'] = setrun_params
 
+            case['xclawcmd'] = 'xclaw'  # if None, will not run code
+            case['plotdir'] = None  # if None, will not make plots
+
+            params = {}
+
             caselist.append(case)
 
     return caselist
-
 
 
 if __name__ == '__main__':
