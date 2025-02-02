@@ -7,8 +7,6 @@ import multiprocessing
 from multiprocessing import Process, current_process
 import os,sys,shutil,pickle
 import numpy
-#import util
-import logging
 import contextlib
 
 
@@ -72,18 +70,12 @@ def run_one_case(case):
             raise Exception("Could not create directory: %s" % outdir)
 
 
-    timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
+    #timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
+    timenow = datetime.datetime.utcnow().strftime('%Y-%m-%d at %H:%M:%S') \
+                + ' UTC'
     message = "Process %i started   case %s at %s\n" \
                 % (p.pid, case_name, timenow)
 
-    fname_log = os.path.join(outdir, 'python_log.txt')
-    print("Python output from this run will go to\n   %s\n" \
-                        % fname_log)
-
-    #logging.basicConfig(filename=fname_log,level=logging.INFO)
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger()
-    logger.info(message)
 
     # initialize rundata using setrun but then change some things for each run:
     rundata = setrun()
@@ -117,6 +109,7 @@ def run_one_case(case):
     # write out all case parameters:
     fname = os.path.join(outdir, 'case_info.txt')
     with open(fname,'w') as f:
+        f.write('----------------\n%s\n' % timenow)
         f.write('case %s\n' % case['case_name'])
         for k in case.keys():
             f.write('%s:  %s\n' % (k.ljust(20), case[k]))
@@ -136,9 +129,10 @@ def run_one_case(case):
     # global summary file:
     fname = 'case_summary.txt'
     with open(fname,'a') as f:
-        f.write('=========\ncase %s\n' % case['case_name'])
+        f.write('=========\n%s\n\ncase_name: %s\n' % (timenow,case['case_name']))
         for k in case.keys():
-            f.write('%s:  %s\n' % (k.ljust(20), case[k]))
+            if k != 'case_name':
+                f.write('%s:  %s\n' % (k.ljust(20), case[k]))
 
     if run_clawpack:
         # Run the clawpack executable
@@ -158,7 +152,6 @@ def run_one_case(case):
     message = "Process %i completed case %s at %s\n" \
                 % (p.pid, case_name, timenow)
     print(message)
-    logger.info(message)
 
 
 def make_cases():
@@ -194,8 +187,6 @@ if __name__ == '__main__':
     nprocs = 4
 
     caselist = make_cases()
-
-    multiprocessing.log_to_stderr(logging.INFO)
 
     # run all cases using nprocs processors:
     multip_tools.run_many_cases_pool(caselist, nprocs, run_one_case)
