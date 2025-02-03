@@ -3,7 +3,7 @@ from clawpack.clawutil import runclaw
 
 import multip_tools
 import os,sys,shutil,pickle
-import contextlib
+#import contextlib
 
 
 def set_rundata_params(rundata, setrun_params):
@@ -88,9 +88,14 @@ def run_one_case_clawpack(case):
     # clawpack.clawutil.runclaw parameters that might be specified:
     overwrite = params.get('overwrite', True) # if False, abort if outdir exists
     runexe = params.get('runexe', None)  # string that must preceed xclawcmd
+    redirect_python = params.get('redirect_python', True) # sent stdout to file
 
 
-    if not os.path.isdir(outdir):
+    if os.path.isdir(outdir):
+        print('overwrite = %s and outdir already exists: %s' \
+                % (overwrite,outdir))
+        # note that runclaw will use overwrite parameter to see if allowed
+    else:
         try:
             os.mkdir(outdir)
             print('Created %s' % outdir)
@@ -119,7 +124,7 @@ def run_one_case_clawpack(case):
 
     print(message)
 
-    if 1:
+    if redirect_python:
         # Redirect stdout,stderr so any print statements go to a unique file...
         import sys
         sys_stdout = sys.stdout
@@ -206,7 +211,7 @@ def run_one_case_clawpack(case):
                 % (p.pid, case_name, timenow)
     print(message)
 
-    if 1:
+    if redirect_python:
         stdout_file.close()
         # Fix stdout again
         sys.stdout = sys_stdout
