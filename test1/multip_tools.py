@@ -7,7 +7,7 @@ The main function provided is
 which takes a list of cases to run, the number of processors to use, and
 a function that runs a single case as input.
 
-*caselist* is a list of dictionaries.  
+*caselist* is a list of dictionaries.
 Each dictionary should define whatever parameters are needed for one case.
 
 This module contains templates run_one_case_sample and make_all_cases_sample.
@@ -36,7 +36,7 @@ def run_many_cases(caselist, nprocs, run_one_case):
     Each case is a dictionary of parameters for that case.
 
     *run_one_case* should be a function with a single input *case*
-    that runs a single case. 
+    that runs a single case.
     """
 
     # Split up cases between nprocs processors:
@@ -58,7 +58,7 @@ def run_many_cases(caselist, nprocs, run_one_case):
         ans = raw_input("OK to run? ")
         if ans.lower() not in ['y','yes']:
             raise Exception("*** Aborting")
-    
+
 
     def run_cases(procnum):
         # loop over all cases assigned to one processor:
@@ -99,26 +99,26 @@ def run_many_cases_pool(caselist, nprocs, run_one_case):
     Use multiprocessing.Pool in this version, rather than pre-assigning
     cases to processes.  Should work better if some take longer to run
     than others.
-    
+
     Split up cases in *caselist* between the *nprocs* processors.
     Each case is a dictionary of parameters for that case.
 
     *run_one_case* should be a function with a single input *case*
-    that runs a single case. 
+    that runs a single case.
     """
-    
+
     from multiprocessing import Pool, TimeoutError
 
-    abort_time = 5
+    abort_time = 1
     print("\n%s cases will be run on %s processors" % (len(caselist),nprocs))
     print("You have %s seconds to abort..." % abort_time)
 
     time.sleep(abort_time) # give time to abort
-        
+
     with Pool(processes=nprocs) as pool:
         pool.map(run_one_case, caselist)
-        
-        
+
+
 
 def make_all_cases_sample():
     """
@@ -150,12 +150,12 @@ def run_one_case_sample(case):
 
     # For this sample, case['num'] is just an identifying number.
     print('Sample job... now running case ',case['num'])
-    
+
     # This part shows how to redirect stdout so output from any
     # print statements go to a unique file...
     import sys
     import datetime
-    
+
     message = ""
     stdout_fname = 'case%s_out.txt' % case['num']
     try:
@@ -164,32 +164,32 @@ def run_one_case_sample(case):
                             % stdout_fname
     except:
         raise Exception("Cannot open file %s" % stdout_fname)
-        
+
     sys_stdout = sys.stdout
     sys.stdout = stdout_file
     # send any errors to the same file:
     sys_stderr = sys.stderr
     sys.stderr = stdout_file
-    
-    
+
+
     timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
     print('Working on case %s, started at %s' % (case['num'],timenow))
 
     p = current_process()
     print('Process running this case: ', p)
-    
+
     # replace this with something useful:
     sleep_time = 2
     print("Will sleep for %s seconds..." % sleep_time)
     time.sleep(sleep_time)
-    
+
     if 0:
         # throw an error to check that output:
         time.no_such_function()
-    
+
     timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
     print('Done with case %s at %s' % (case['num'],timenow))
-    
+
     # Reset stdout and stdout:
     sys.stdout = sys_stdout
     sys.stderr = sys_stderr
@@ -200,7 +200,7 @@ def make_all_cases_dtopos(dtopo_dir, dtopo_names, xgeoclaw_path, runs_dir='.'):
     Output: *caselist*, a list of cases to be run.
     Each case should be dictionary of any parameters needed to set up an
     individual case.  These will be used by run_one_case_dtopo.
-             
+
     For this example, each dtopo_name in dtopo_names corresponds to a dtopo
     file.  GeoClaw will be run for each of these earthquake sources.
     A unique directory will be created for each run, with names
@@ -226,10 +226,10 @@ def make_all_cases_dtopos(dtopo_dir, dtopo_names, xgeoclaw_path, runs_dir='.'):
         print('Created %s' % outdir)
         os.system('mkdir -p %s' % plotdir)
         print('Created %s' % plotdir)
-        
+
         # Define a dictionary of the parameters needed for this case:
         case = {'dtopo_name':dtopo_name, 'dtopofile':dtopofile,
-                'outdir':outdir, 'plotdir':plotdir, 
+                'outdir':outdir, 'plotdir':plotdir,
                 'xgeoclaw_path':xgeoclaw_path}
         caselist.append(case)
 
@@ -241,7 +241,7 @@ def run_one_case_dtopo(case):
     """
     Input *case* should be a dictionary with any parameters needed to set up
     and run a specific case.
-    
+
     In this example, it is assumed that all values in setrun.py will be
     used for every run with the exception of the dtopo file.
     """
@@ -252,7 +252,7 @@ def run_one_case_dtopo(case):
     from setrun import setrun  # setrun.py should exist in run directory
 
     p = current_process()
-    
+
     # unpack the dictionary:
     dtopo_name = case['dtopo_name']
     dtopofile = case['dtopofile']
@@ -261,13 +261,13 @@ def run_one_case_dtopo(case):
     plotdir = case['plotdir']
 
     timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
-    message = "Process %i started   case %s at %s\n" \
+    message = "Process %i started case: %s at %s\n" \
                 % (p.pid, dtopo_name, timenow)
-    
+
     if not os.path.isdir(outdir):
         print(message)
         raise Exception("Missing directory: %s" % outdir)
-    
+
     stdout_fname = outdir + '/python_output.txt'
     try:
         stdout_file = open(stdout_fname, 'w')
@@ -289,7 +289,7 @@ def run_one_case_dtopo(case):
     sys_stderr = sys.stderr
     sys.stderr = stdout_file
 
-    
+
     # initialize rundata using setrun but then change some things for each run:
     rundata = setrun()
 
@@ -307,7 +307,7 @@ def run_one_case_dtopo(case):
 
     # Run the xgeoclaw code
     # Use data from rundir=outdir, which was just written above...
-    runclaw(xclawcmd = xgeoclaw_path, outdir=outdir, 
+    runclaw(xclawcmd = xgeoclaw_path, outdir=outdir,
             rundir=outdir, nohup=False)
 
     if 0:
@@ -327,7 +327,7 @@ def run_one_case_dtopo(case):
     print(message)
 
 if __name__ == "__main__":
-    
+
     # Sample code...
 
     if len(sys.argv) > 1:

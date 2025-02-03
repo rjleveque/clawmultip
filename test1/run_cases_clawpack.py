@@ -1,12 +1,8 @@
 from pylab import *
 from clawpack.clawutil import runclaw
 
-import sys
 import multip_tools
-import multiprocessing
-from multiprocessing import Process, current_process
 import os,sys,shutil,pickle
-import numpy
 import contextlib
 
 
@@ -30,10 +26,29 @@ def set_rundata_params(rundata, setrun_params):
 
     return rundata
 
+def set_plotdata_params(plotdata, setplot_params):
+    """
+    Set
+        plotdata.<key> = <value>
+    for each key in the dictionary setplot_params.
+    Move to multip_tools module eventually.
+    """
+    keys = setplot_params.keys()
+    for key in keys:
+        value = setplot_params[key]
+        setcmd = 'plotdata.%s = %s' % (key, value)
+        try:
+            exec(setcmd)
+            print('Reset: %s' % setcmd)
+        except:
+            print('Command failed: %s' % setcmd)
+            raise
+
+    return plotdata
 
 runs_dir = os.path.abspath('.')
 
-def run_one_case(case):
+def run_one_case_clawpack(case):
     """
     Input *case* should be a dictionary with any parameters needed to set up
     and run a specific case.
@@ -44,8 +59,13 @@ def run_one_case(case):
 
     import datetime
     from clawpack.clawutil.runclaw import runclaw
-    from clawpack.visclaw.plotclaw import plotclaw
-    from setrun_cases import setrun
+    #from clawpack.visclaw.plotclaw import plotclaw
+    from plotclaw import plotclaw
+    from clawpack.visclaw.plotpages import plotclaw2html
+    import importlib
+    import os,sys,shutil,pickle
+    from multiprocessing import current_process
+
 
     p = current_process()
 
@@ -59,7 +79,9 @@ def run_one_case(case):
 
     case_name = case['case_name']
     outdir = case['outdir']
+    setrun_file = case.get('setrun_file', 'setrun.py')
     setrun_params = case.get('setrun_params', {}) # setrun params to change
+    setplot_file = case.get('setplot_file', 'setplot.py')
     setplot_params = case.get('setplot_params', {}) # setplot params to change
     params = case.get('params', {})  # dictionary for any other case parameters
 
@@ -138,7 +160,13 @@ def run_one_case(case):
     if run_clawpack:
 
         # initialize rundata using specified setrun file:
-        rundata = setrun()
+        spec = importlib.util.spec_from_file_location('setrun',setrun_file)
+        setrun = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(setrun)
+        rundata = setrun.setrun()
+
+        # initialize rundata using specified setrun file:
+        #rundata = setrun()
 
         # now change things in rundata as specified by case['setrun_params']:
         rundata = set_rundata_params(rundata, case['setrun_params'])
@@ -156,8 +184,20 @@ def run_one_case(case):
                 xclawout=None, xclawerr=None)
 
     if make_plots:
-        # need to add
-        print('No code yet to make plots')
+
+        # initialize plotdata using specified setplot file:
+        spec = importlib.util.spec_from_file_location('setplot',setplot_file)
+        setplot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(setplot)
+        plotdata = setplot.setplot(outdir=outdir)
+        plotdata.outdir = outdir
+        plotdata.plotdir = plotdir
+
+        # now change things in plotdata as specified by case['setplot_params']:
+        #plotdata = set_plotdata_params(plotdata, case['setplot_params'])
+
+        #plotclaw2html(plotdata)
+        plotclaw(outdir, plotdir, plotdata=plotdata)
 
     #timenow = datetime.datetime.today().strftime('%Y-%m-%d at %H:%M:%S')
     timenow = datetime.datetime.utcnow().strftime('%Y-%m-%d at %H:%M:%S') \
@@ -185,23 +225,31 @@ def make_cases():
     for mx in [100,200]:
         for order in [1,2]:
             case = {}
-            outdir = 'order%s_mx%s' % (order, str(mx).zfill(4))
-            case_name = 'case_order%s_mx%s' % (order, str(mx).zfill(4))
+            outdir = '_output_order%s_mx%s' % (order, str(mx).zfill(4))
+            case_name = 'order%s_mx%s' % (order, str(mx).zfill(4))
 
+            case['case_name'] = case_name
+            case['outdir'] = outdir
+
+            case['xclawcmd'] = 'xclaw'  # if None, will not run code
+            case['setrun_file'] = 'setrun_cases.py'
             setrun_params = {}
             setrun_params['clawdata.order'] = order
             setrun_params['clawdata.num_cells'] = [mx]
-
-            case['outdir'] = outdir
-            case['case_name'] = case_name
             case['setrun_params'] = setrun_params
 
-            case['xclawcmd'] = 'xclaw'  # if None, will not run code
-            case['plotdir'] = None  # if None, will not make plots
+            #case['plotdir'] = None  # if None, will not make plots
+            case['plotdir'] = outdir.replace('_output', '_plots')
+            case['setplot_file'] = 'setplot_cases.py'
+            setplot_params = {}
+            setplot_params['plotaxes1.title'] = '"%s"' % case_name
+            case['setplot_params'] = setplot_params
 
             params = {}
 
             caselist.append(case)
+
+        caselist = caselist[:1]  # subset
 
     return caselist
 
@@ -209,9 +257,9 @@ def make_cases():
 if __name__ == '__main__':
 
     # number of GeoClaw jobs to run simultaneously:
-    nprocs = 4
+    nprocs = 1
 
     caselist = make_cases()
 
     # run all cases using nprocs processors:
-    multip_tools.run_many_cases_pool(caselist, nprocs, run_one_case)
+    multip_tools.run_many_cases_pool(caselist, nprocs, run_one_case_clawpack)
