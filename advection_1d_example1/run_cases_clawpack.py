@@ -41,10 +41,11 @@ def make_cases():
 
             # setrun parameters:
             case['setrun_file'] = 'setrun_cases.py'
-            setrun_params = {}
-            setrun_params['clawdata.order'] = order
-            setrun_params['clawdata.num_cells'] = [mx]
-            case['setrun_params'] = setrun_params
+            # setrun_case.py should contain a setrun function with case
+            # as a keyword argument so we can pass in the following values:
+
+            case['order'] = order
+            case['mx'] = mx
 
             #case['plotdir'] = None  # if None, will not make plots
             case['plotdir'] = outdir.replace('_output', '_plots')
@@ -53,8 +54,6 @@ def make_cases():
             # no setplot parameters are set here for this example,
             # instead setplot_cases.setplot has a case argument and uses it
             # to get outdir and case_name used in the title of figures
-            setplot_params = {}
-            case['setplot_params'] = setplot_params
 
             # other case-dependent parameters you want to use in setrun
             # or setplot that are not standard attributes of rundata or plotdata

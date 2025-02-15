@@ -8,11 +8,13 @@ function setplot is called to set the plot parameters.
 This setplot will be read in by clawmultip_tools.set_plotdata_params
 and called with a different case dictionary of data for each case.
 
+Note: this version has case as a parameter to setplot, a dictionary used to pass
+in values that vary from case to case for doing a parameter sweep.
 """
 
 
 #--------------------------
-def setplot(plotdata=None, case=None):
+def setplot(plotdata=None, case={}):
 #--------------------------
 
     """
@@ -24,18 +26,18 @@ def setplot(plotdata=None, case=None):
     import os
     from clawpack.clawutil.data import ClawData
 
+    # The values below are expected to be in case dictionary,
+    # and may vary from case to case:
+
+    outdir = case['outdir']  # required to read proper setprob.data
+    case_name = case['case_name']  # used in plot title
+
 
     if plotdata is None:
         from clawpack.visclaw.data import ClawPlotData
         plotdata = ClawPlotData()
 
     plotdata.clearfigures()  # clear any old figures,axes,items data
-
-    if case is None:
-        message = 'This setplot requires case dictionary'
-        raise ValueError(message)
-    outdir = case['outdir']  # required to read proper setprob.data
-    case_name = case['case_name']  # used in plot title
 
     probdata = ClawData()
     setprob_file = os.path.join(outdir, 'setprob.data')

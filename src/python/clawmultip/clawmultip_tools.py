@@ -5,45 +5,6 @@ import os,sys,shutil,pickle
 #import contextlib
 
 
-def set_rundata_params(rundata, setrun_params):
-    """
-    Set
-        rundata.<key> = <value>
-    for each key in the dictionary setrun_params.
-    Move to multip_tools module eventually.
-    """
-    keys = setrun_params.keys()
-    for key in keys:
-        value = setrun_params[key]
-        setcmd = 'rundata.%s = %s' % (key, value)
-        try:
-            print('Reset: %s' % setcmd)
-            exec(setcmd)
-        except:
-            print('Command failed: %s' % setcmd)
-            raise
-
-    return rundata
-
-def set_plotdata_params(plotdata, setplot_params):
-    """
-    Set
-        plotdata.<key> = <value>
-    for each key in the dictionary setplot_params.
-    Move to multip_tools module eventually.
-    """
-    keys = setplot_params.keys()
-    for key in keys:
-        value = setplot_params[key]
-        setcmd = 'plotdata.%s = %s' % (key, value)
-        try:
-            exec(setcmd)
-            print('Reset: %s' % setcmd)
-        except:
-            print('Command failed: %s' % setcmd)
-            raise
-
-    return plotdata
 
 def run_one_case_clawpack(case):
     """
@@ -86,10 +47,7 @@ def run_one_case_clawpack(case):
     case_name = case['case_name']
     outdir = case['outdir']
     setrun_file = case.get('setrun_file', 'setrun.py')
-    setrun_params = case.get('setrun_params', {}) # setrun params to change
     setplot_file = case.get('setplot_file', 'setplot.py')
-    setplot_params = case.get('setplot_params', {}) # setplot params to change
-    other_params = case.get('other_params', {})  # dictionary for any other case parameters
 
     # clawpack.clawutil.runclaw parameters that might be specified:
     overwrite = case.get('overwrite', True) # if False, abort if outdir exists
@@ -145,11 +103,6 @@ def run_one_case_clawpack(case):
         f.write('case %s\n' % case['case_name'])
         for k in case.keys():
             f.write('%s:  %s\n' % (k.ljust(20), case[k]))
-        if 0:
-            f.write('-----------\nsetrun_params:\n')
-            setrun_params = case['setrun_params']
-            for k in setrun_params.keys():
-                f.write('%s:  %s\n' % (k.ljust(20), setrun_params[k]))
     print('Created %s' % fname)
 
     # pickle case dictionary for reloading later:
@@ -173,13 +126,15 @@ def run_one_case_clawpack(case):
         spec = importlib.util.spec_from_file_location('setrun',setrun_file)
         setrun = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(setrun)
-        rundata = setrun.setrun()
+        #rundata = setrun.setrun()
 
-        # initialize rundata using specified setrun file:
-        #rundata = setrun()
+        # setrun function to be called from must be modified to accept
+        # a parameter `case` so that the dictionary of parameters can be
+        # passed in.
 
-        # now change things in rundata as specified by case['setrun_params']:
-        rundata = set_rundata_params(rundata, case['setrun_params'])
+        # setrun must be modified to accept case as a kwarg in order to
+        # customize for each case:
+        rundata = setrun.setrun(case=case)
 
         # write .data files in outdir:
         rundata.write(outdir)
@@ -203,19 +158,13 @@ def run_one_case_clawpack(case):
         spec = importlib.util.spec_from_file_location('setplot',setplot_file)
         setplot = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(setplot)
-        try:
-            # perhaps setplot has been modified to accept case in order to
-            # customize plots for each case:
-            plotdata = setplot.setplot(case=case)
-        except:
-            # otherwise assume a standard setplot is used for all cases
-            plotdata = setplot.setplot()
+
+        # setplot must be modified to accept case as a kwarg in order to
+        # customize for each case:
+        plotdata = setplot.setplot(case=case)
 
         plotdata.outdir = outdir
         plotdata.plotdir = plotdir
-
-        # change things in plotdata as specified by case['setplot_params']:
-        plotdata = set_plotdata_params(plotdata, case['setplot_params'])
 
         # note that modified plotclaw is needed in order to pass plotdata here:
         plotclaw(outdir, plotdir, plotdata=plotdata)

@@ -4,6 +4,8 @@ Module to set up run time parameters for Clawpack -- classic code.
 The values set in the function setrun are then written out to data files
 that will be read in by the Fortran code.
 
+Note: this version has case as a parameter to setrun, a dictionary used to pass
+in values that vary from case to case for doing a parameter sweep.
 """
 
 from __future__ import absolute_import
@@ -11,7 +13,7 @@ import os
 import numpy as np
 
 #------------------------------
-def setrun(claw_pkg='classic'):
+def setrun(claw_pkg='classic', case={}):
 #------------------------------
 
     """
@@ -29,6 +31,12 @@ def setrun(claw_pkg='classic'):
 
 
     assert claw_pkg.lower() == 'classic',  "Expected claw_pkg = 'classic'"
+
+    # The values below are expected to be in case dictionary,
+    # and may vary from case to case:
+
+    order = case['order']
+    mx = case['mx']
 
     num_dim = 1
     rundata = data.ClawRunData(claw_pkg, num_dim)
@@ -60,7 +68,7 @@ def setrun(claw_pkg='classic'):
     clawdata.upper[0] = 1.000000e+00          # xupper
 
     # Number of grid cells:
-    clawdata.num_cells[0] = 200      # mx
+    clawdata.num_cells[0] = mx  # from case dict
 
 
     # ---------------
@@ -168,7 +176,7 @@ def setrun(claw_pkg='classic'):
     # ------------------
 
     # Order of accuracy:  1 => Godunov,  2 => Lax-Wendroff plus limiters
-    clawdata.order = 2
+    clawdata.order = order # from case dict
 
 
     # Number of waves in the Riemann solution:
