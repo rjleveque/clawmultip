@@ -3,7 +3,7 @@ Code to run several similar cases over mulitple processors using the
 Python multiprocess module.
 
 The main function provided is
-    run_many_cases(caselist, nprocs, run_one_case)
+    run_many_cases_pool(caselist, nprocs, run_one_case)
 which takes a list of cases to run, the number of processors to use, and
 a function that runs a single case as input.
 
@@ -16,6 +16,16 @@ If you execute:
 at the command line, for example, these will be used to do a quick example
 with nprocs=3, where run_one_case_sample is used to simply print out a case
 number and make_all_cases_sample makes 7 such cases.
+
+NOTE: 
+
+Because uses multiprocessing.Pool, you can only call run_many_cases_pool 
+from a main program, i.e. following 
+    if __name__ == '__main__':
+in your Python code, not elsewhere in a module and not from an interactive
+shell.  See:
+ https://docs.python.org/3/library/multiprocessing.html#using-a-pool-of-workers 
+
 """
 
 from numpy import *
