@@ -30,7 +30,7 @@ from multiprocessing import Process, current_process
 
 setplot_file = os.path.abspath('setplot.py')
 
-def run_many_cases(caselist, nprocs, run_one_case):
+def run_many_cases(caselist, nprocs, run_one_case, abort_time=5):
     """
     Split up cases in *caselist* between the *nprocs* processors.
     Each case is a dictionary of parameters for that case.
@@ -48,7 +48,6 @@ def run_many_cases(caselist, nprocs, run_one_case):
     # for debugging:
     #print("+++ caseproc: ", caseproc)
 
-    abort_time = 5
     print("\n%s cases will be run on %s processors" % (len(caselist),nprocs))
     print("You have %s seconds to abort..." % abort_time)
 
