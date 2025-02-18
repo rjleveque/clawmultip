@@ -34,7 +34,6 @@ def make_cases():
 
             case['case_name'] = case_name
             case['outdir'] = outdir
-            #case['overwrite'] = False  # NOT WORKING
 
             #case['xclawcmd'] = None  # if None, will not run code
             case['xclawcmd'] = 'xclaw'  # executable created by 'make .exe'
@@ -54,12 +53,6 @@ def make_cases():
             # no setplot parameters are set here for this example,
             # instead setplot_cases.setplot has a case argument and uses it
             # to get outdir and case_name used in the title of figures
-
-            # other case-dependent parameters you want to use in setrun
-            # or setplot that are not standard attributes of rundata or plotdata
-            # (none used this example):
-            other_params = {}
-            case['other_params'] = other_params
 
             caselist.append(case)
 
