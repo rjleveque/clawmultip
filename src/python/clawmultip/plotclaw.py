@@ -47,16 +47,13 @@ def plotclaw(outdir='.', plotdir='_plots', setplot = 'setplot.py', plotdata=None
     from clawpack.visclaw import plotpages
 
     if plotdata is None:
-        plotdata = ClawPlotData(file_format=format)
-
-    plotdata.outdir = outdir
-    plotdata.plotdir = plotdir
-    plotdata.setplot = setplot
-    plotdata.format = format
-    plotdata.msgfile = msgfile
-
-    if plotdata is None:
-        frametools.call_setplot(plotdata.setplot, plotdata)
+        plotdata = ClawPlotData()
+        plotdata.outdir = outdir
+        plotdata.plotdir = plotdir
+        plotdata.setplot = setplot
+        plotdata.format = format
+        plotdata.msgfile = msgfile
+        plotdata = frametools.call_setplot(plotdata.setplot, plotdata)
 
 
     if plotdata.num_procs is None:
@@ -64,11 +61,11 @@ def plotclaw(outdir='.', plotdir='_plots', setplot = 'setplot.py', plotdata=None
 
     # Make sure plotdata.parallel is False in some cases:
 
-
-    if plotdata.parallel:
-        assert type(setplot) in [str, bool, type(None)], \
-                "*** Parallel plotting is not supported when ClawPlotData " \
-                + "attribute setplot is a function."
+    if plotdata.parallel and (type(setplot) not in [str, bool, type(None)]):
+        print("*** Parallel plotting is not supported when ClawPlotData " \
+                + "attribute setplot is a function, " \
+                + "Setting plotdata.parallel to False")
+        plotdata.parallel = False
 
     if plotdata.parallel and (plotdata.num_procs > 1):
 

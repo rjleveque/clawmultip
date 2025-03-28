@@ -2,6 +2,7 @@ from clawpack.clawutil import runclaw
 
 import multip_tools
 import os,sys,shutil,pickle
+import inspect
 #import contextlib
 
 
@@ -26,9 +27,6 @@ def run_one_case_clawpack(case):
     from plotclaw import plotclaw
     sys.path.pop(0)
 
-    from plotclaw import plotclaw
-
-    from clawpack.visclaw.plotpages import plotclaw2html
     import importlib
     import os,sys,shutil,pickle
     from multiprocessing import current_process
@@ -128,13 +126,13 @@ def run_one_case_clawpack(case):
         spec.loader.exec_module(setrun)
         #rundata = setrun.setrun()
 
-        # setrun function to be called from must be modified to accept
-        # a parameter `case` so that the dictionary of parameters can be
-        # passed in.
+        # The setrun function may have been modified to accept an argument
+        # `case` so that the dictionary of parameters can be passed in:
 
-        # setrun must be modified to accept case as a kwarg in order to
-        # customize for each case:
-        rundata = setrun.setrun(case=case)
+        if 'case' in inspect.signature(setrun.setrun).parameters.keys():
+            rundata = setrun.setrun(case=case)
+        else:   
+            rundata = setrun.setrun()
 
         # write .data files in outdir:
         rundata.write(outdir)
@@ -159,9 +157,17 @@ def run_one_case_clawpack(case):
         setplot = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(setplot)
 
-        # setplot must be modified to accept case as a kwarg in order to
-        # customize for each case:
-        plotdata = setplot.setplot(plotdata=None,case=case)
+        # The setplot function may have been modified to accept an argument
+        # `case` so that the dictionary of parameters can be passed in:
+
+        if 'case' in inspect.signature(setplot.setplot).parameters.keys():
+            plotdata = setplot.setplot(plotdata=None,case=case)
+        else:
+            plotdata = setplot.setplot(plotdata=None)
+
+        # note that setplot can also be modified to return None if the
+        # user does not want to make frame plots (setplot can explicitly
+        # make other plots or do other post-processing)
 
         if plotdata is not None:
             # user wants to make time frame plots using plotclaw:
@@ -169,7 +175,7 @@ def run_one_case_clawpack(case):
             plotdata.plotdir = plotdir
 
             # modified plotclaw is needed in order to pass plotdata here:
-            plotclaw(outdir, plotdir, plotdata=plotdata)
+            plotclaw(outdir, plotdir, setplot, plotdata=plotdata)
         else:
             # assume setplot already made any plots desired by user,
             # e.g. fgmax, fgout, or specialized gauge plots.
