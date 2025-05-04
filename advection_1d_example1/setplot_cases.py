@@ -99,5 +99,6 @@ def setplot(plotdata=None, case={}):
     plotdata.latex_figsperline = 2           # layout of plots
     plotdata.latex_framesperline = 1         # layout of plots
     plotdata.latex_makepdf = False           # also run pdflatex?
+    plotdata.parallel = False                # make multiple frame png's at once
 
     return plotdata

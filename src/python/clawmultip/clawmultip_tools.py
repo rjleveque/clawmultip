@@ -1,22 +1,75 @@
-from clawpack.clawutil import runclaw
-
-import multip_tools
-import os,sys,shutil,pickle
-import inspect
-#import contextlib
-
+"""
+The function run_one_case_clawpack defined in this module can be used when
+calling mulitp_tools.run_many_cases_pool, along with a list of cases,
+in order to perform a parameter sweep using Clawpack.
+"""
 
 
 def run_one_case_clawpack(case):
     """
-    Input *case* should be a dictionary with any parameters needed to set up
-    and run a specific case.
+    Code to run a specific case and/or plot the results using Clawpack.
+    This function can be pased in to multip_tools.run_many_cases_pool
+    along with a list of cases to perform a parameter sweep based on the cases.
 
-    It is assumed that all values in setrun.py will be
-    used for every run with the exception of the parameters set for each case.
+    Input *case* should be a dictionary with any parameters needed to set up
+    and run a specific case and/or plot the results.
+
+    It is assumed that values specified by the setrun function provided
+    will be used for every run, with the exception of the parameters
+    set for each case, and similarly for setplot.
+
+    In order to pass the case into setrun and/or setplot to modify the desired
+    parameters, you can provide functions that include an additional
+    parameter case.
+
+    For sample code that sets up a list of cases with modified setrun and
+    setplot functions, see
+        $CLAW/clawutil/examples/clawmultip_advection_1d_example
+    and the README.txt file in that directory.
+
+    This function assumes that, in addition to any parameters you want to
+    modify for your parameter sweep, the case dictionary includes the following:
+
+        case['xclawcmd'] = path to the Clawpack executable to perform each run
+                           or None if you do not want to run Clawpack
+                              (in order to only make a new set of plots based
+                              on existing output).
+
+        case['outdir'] = path to _output directory for this run
+        case['plotdir'] = path to _plots directory for this run,
+                          or None if you do not want to make plots.
+        case['setrun_file'] = path to setrun_cases.py, which contains a
+                              function setrun(claw_pkg, case)
+                              so that case can be passed in.
+                              (Only needed if case['xclawcmd'] is not None)
+        case['setplot_file'] = path to setplot_cases.py, which contains a
+                              function setplot(plotdata, case)
+                              so that case can be passed in (if desired, or
+                              a standard setplot(plotdata) can be used if it
+                              is independent of the case).
+                              (Only needed if case['plotdir'] is not None)
+
+        The following are optional:
+
+        case['overwrite'] = True/False.  Aborts if this is False
+                            and case['outdir']  exists.  (Default is True)
+        case['runexe'] = Any string that must preceed xclawcmd to run the code
+        case['nohup'] = True to run with nohup. (Default is False)
+        case['redirect_python'] = True/False. Redirect stdout to a file
+                                  case['outdir'] + '/python_output.txt'
+                                  (Default is True)
+
+        In addition, add any other parameters to the case dictionary that
+        you want to have available in setrun and/or setplot.
+
     """
 
+    import multip_tools
+    import os,sys,shutil,pickle
+    import inspect
     import datetime
+    import importlib
+    from multiprocessing import current_process
     from clawpack.clawutil.runclaw import runclaw
 
     #from clawpack.visclaw.plotclaw import plotclaw
@@ -26,11 +79,6 @@ def run_one_case_clawpack(case):
     sys.path.insert(0, CLAW + '/clawmultip/src/python/clawmultip')
     from plotclaw import plotclaw
     sys.path.pop(0)
-
-    import importlib
-    import os,sys,shutil,pickle
-    from multiprocessing import current_process
-
 
     p = current_process()
 
@@ -124,14 +172,15 @@ def run_one_case_clawpack(case):
         spec = importlib.util.spec_from_file_location('setrun',setrun_file)
         setrun = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(setrun)
-        #rundata = setrun.setrun()
 
         # The setrun function may have been modified to accept an argument
         # `case` so that the dictionary of parameters can be passed in:
 
         if 'case' in inspect.signature(setrun.setrun).parameters.keys():
             rundata = setrun.setrun(case=case)
-        else:   
+        else:
+            print('*** Warning: setrun does not support case parameter: ', \
+                    '    setrun_file = %s' % setrun_file)
             rundata = setrun.setrun()
 
         # write .data files in outdir:
@@ -144,7 +193,7 @@ def run_one_case_clawpack(case):
         # redirect output and error messages:
         outfile = os.path.join(outdir, 'fortran_output.txt')
         print('Fortran output will be redirected to\n    ', outfile)
-    
+
         # Use data from rundir=outdir, which was just written above...
         runclaw(xclawcmd=xclawcmd, outdir=outdir, overwrite=overwrite,
                 rundir=outdir, nohup=nohup, runexe=runexe,
@@ -163,7 +212,10 @@ def run_one_case_clawpack(case):
         if 'case' in inspect.signature(setplot.setplot).parameters.keys():
             plotdata = setplot.setplot(plotdata=None,case=case)
         else:
+            print('*** Warning: setplot does not support case parameter: ', \
+                    '    setplot_file = %s' % setplot_file)
             plotdata = setplot.setplot(plotdata=None)
+
 
         # note that setplot can also be modified to return None if the
         # user does not want to make frame plots (setplot can explicitly
@@ -194,3 +246,49 @@ def run_one_case_clawpack(case):
         sys.stdout = sys_stdout
         sys.stderr = sys_stderr
         print(message) # to screen
+
+
+def make_cases_template():
+
+    """
+    Create a list of the cases to be run, varying a couple rundata parameters
+    after setting common parameters from setrun_cases.py.
+
+    The parameters set for each case (as dictionary keys) are determined by
+    the fact that we will use clawmultip_tools.run_one_case_clawpack()
+    to run a single case.  See that code for more documentation.
+    """
+
+    caselist = []
+
+    for mx in [50,100,200]:
+        for order in [1,2]:
+            case = {}
+            outdir = '_output_order%s_mx%s' % (order, str(mx).zfill(4))
+            case_name = 'order%s_mx%s' % (order, str(mx).zfill(4))
+
+            case['case_name'] = case_name
+            case['outdir'] = outdir
+
+            #case['xclawcmd'] = None  # if None, will not run code
+            case['xclawcmd'] = 'xclaw'  # executable created by 'make .exe'
+
+            # setrun parameters:
+            case['setrun_file'] = 'setrun_cases.py'
+            # setrun_case.py should contain a setrun function with case
+            # as a keyword argument so we can pass in the following values:
+
+            case['order'] = order
+            case['mx'] = mx
+
+            #case['plotdir'] = None  # if None, will not make plots
+            case['plotdir'] = outdir.replace('_output', '_plots')
+            case['setplot_file'] = 'setplot_cases.py'
+
+            # no setplot parameters are set here for this example,
+            # instead setplot_cases.setplot has a case argument and uses it
+            # to get outdir and case_name used in the title of figures
+
+            caselist.append(case)
+
+    return caselist

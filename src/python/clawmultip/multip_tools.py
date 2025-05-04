@@ -1,6 +1,8 @@
 """
 Code to run several similar cases over mulitple processors using the
-Python multiprocess module.
+Python multiprocess module.  This code is not specific to Clawpack, but
+is used in clawmultip_tools.py, which provides tools to simplify doing
+parameter sweeps in Clawpack.
 
 The main function provided is
     run_many_cases_pool(caselist, nprocs, run_one_case)
@@ -10,21 +12,27 @@ a function that runs a single case as input.
 *caselist* is a list of dictionaries.
 Each dictionary should define whatever parameters are needed for one case.
 
+Example:
+
 This module contains templates run_one_case_sample and make_all_cases_sample.
 If you execute:
     python multip_tools.py 3
 at the command line, for example, these will be used to do a quick example
-with nprocs=3, where run_one_case_sample is used to simply print out a case
-number and make_all_cases_sample makes 7 such cases.
+with nprocs=3, where:
 
-NOTE: 
+    run_one_case_sample simply prints out a case number and then
+        sleeps for 2 seconds.
 
-Because uses multiprocessing.Pool, you can only call run_many_cases_pool 
-from a main program, i.e. following 
+    make_all_cases_sample makes 7 such cases.
+
+NOTE:
+
+Because uses multiprocessing.Pool, you can only call run_many_cases_pool
+from a main program, i.e. following
     if __name__ == '__main__':
 in your Python code, not elsewhere in a module and not from an interactive
 shell.  See:
- https://docs.python.org/3/library/multiprocessing.html#using-a-pool-of-workers 
+ https://docs.python.org/3/library/multiprocessing.html#using-a-pool-of-workers
 
 """
 
